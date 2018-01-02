@@ -44,9 +44,9 @@ package object tseclogin {
 
   abstract class PStore[F[_], I, A](getId: A => I)(implicit F: Sync[F])
       extends SCryptPasswordStore[F, I] {
-    private val otherTable = mutable.HashMap[I, SCrypt]()
+    private val otherTable = mutable.HashMap[I, PasswordHash[SCrypt]]()
 
-    def retrievePass(id: I): F[SCrypt] = {
+    def retrievePass(id: I): F[PasswordHash[SCrypt]] = {
       otherTable.get(id) match {
         case Some(s) =>
           F.pure(s)
@@ -55,20 +55,21 @@ package object tseclogin {
       }
     }
 
-    def putCredentials(credentials: RawCredentials[I]): F[Unit] = F.delay {
-      otherTable.put(credentials.identity,
-                     credentials.rawPassword.hashPassword[SCrypt])
-    }
+    def putCredentials(credentials: RawCredentials[I]): F[Unit] = for {
+      hash <- SCrypt.hashpw[F](credentials.rawPassword)
+      _ <- F.delay(otherTable.put(credentials.identity, hash))
+    } yield ()
 
-    def updateCredentials(credentials: RawCredentials[I]): F[Unit] = F.delay {
-      otherTable.update(credentials.identity,
-                        credentials.rawPassword.hashPassword[SCrypt])
-    }
+    def updateCredentials(credentials: RawCredentials[I]): F[Unit] = for {
+      hash <- SCrypt.hashpw[F](credentials.rawPassword)
+      _ <- F.delay(otherTable.update(credentials.identity, hash))
+    } yield ()
 
     def removeCredentials(credentials: RawCredentials[I]): F[Unit] =
-      F.ensure(retrievePass(credentials.identity))(new IllegalArgumentException)(
-        credentials.rawPassword.checkWithHash(_)) *> F.delay(
+      F.ensure(retrievePass(credentials.identity)) (new IllegalArgumentException) (
+        SCrypt.checkpwUnsafe(credentials.rawPassword, _)) *> F.delay(
         otherTable.remove(credentials.identity)) *> F.unit
-  }
+    }
+
 
 }
