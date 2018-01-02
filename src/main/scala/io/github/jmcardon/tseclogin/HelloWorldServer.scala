@@ -1,20 +1,20 @@
 package io.github.jmcardon.tseclogin
 
+
 import cats.data.OptionT
-import cats.effect.{IO, Sync}
+import cats.effect.IO
 import io.circe._
 import org.http4s._
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.blaze.BlazeBuilder
-import org.http4s.util.StreamApp
 import tsec.authentication._
 import tsec.mac.imports.HMACSHA256
 import cats.syntax.all._
 import io.circe.syntax._
 import io.circe.generic.auto._
 import tsec.authentication.credentials.RawCredentials
-import fs2.Stream
+import fs2.{Stream, StreamApp}
 
 import scala.concurrent.duration._
 
